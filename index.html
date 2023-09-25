@@ -1,88 +1,160 @@
 <!DOCTYPE html>
 <html lang="en">
 	<head>
-		<title>Leeyang-test</title>
+		<title>Lee yang Test-Gems</title>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 		<link type="text/css" rel="stylesheet" href="main.css">
 	</head>
 
 	<body>
+		<script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+		<script type="importmap">
+			{
+				"imports": {
+					"three": "../build/three.module.js",
+					"three/addons/": "./jsm/"
+				}
+			}
+		</script>
 		<script type="module">
 
 			import * as THREE from 'three';
 
-			import { ParallaxBarrierEffect } from 'three/addons/effects/ParallaxBarrierEffect.js';
+			import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+			import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+			import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-			let container, camera, scene, renderer, effect;
+			import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+			import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
-			const spheres = [];
-
-			let mouseX = 0;
-			let mouseY = 0;
-
-			let windowHalfX = window.innerWidth / 2;
-			let windowHalfY = window.innerHeight / 2;
-
-			document.addEventListener( 'mousemove', onDocumentMouseMove );
+			let camera, scene, renderer;
 
 			init();
-			animate();
+			render();
 
 			function init() {
 
-				container = document.createElement( 'div' );
+				const container = document.createElement( 'div' );
 				document.body.appendChild( container );
 
-				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.01, 100 );
-				camera.position.z = 3;
-
-				const path = 'images/';
-				const format = '.jpg';
-				const urls = [
-					path + 'posx' + format, path + 'negx' + format,
-					path + 'posy' + format, path + 'negy' + format,
-					path + 'posz' + format, path + 'negz' + format
-				];
-
-				const textureCube = new THREE.CubeTextureLoader().load( urls );
-
-				scene = new THREE.Scene();
-				scene.background = textureCube;
-
-				const geometry = new THREE.SphereGeometry( 0.1, 32, 16 );
-				const material = new THREE.MeshBasicMaterial( { color: 0xffffff, envMap: textureCube } );
-
-				for ( let i = 0; i < 500; i ++ ) {
-
-					const mesh = new THREE.Mesh( geometry, material );
-
-					mesh.position.x = Math.random() * 10 - 5;
-					mesh.position.x = Math.random() * 20 -100;
-					mesh.position.y = Math.random() * 10 - 5;
-					mesh.position.z = Math.random() * 10 - 5;
-
-					mesh.scale.x = mesh.scale.y = mesh.scale.z = Math.random() * 3 + 1;
-
-					scene.add( mesh );
-
-					spheres.push( mesh );
-
-				}
-
-				//
-
-				renderer = new THREE.WebGLRenderer();
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
 				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.toneMapping = THREE.ACESFilmicToneMapping;
+				renderer.toneMappingExposure = 1;
 				container.appendChild( renderer.domElement );
 
-				const width = window.innerWidth || 2;
-				const height = window.innerHeight || 2;
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
+				camera.position.set( 10, -10, 0 );
 
-				effect = new ParallaxBarrierEffect( renderer );
-				effect.setSize( width, height );
+				const environment = new RoomEnvironment( renderer );
+				const pmremGenerator = new THREE.PMREMGenerator( renderer );
 
-				//
+				scene = new THREE.Scene();
+                
+				// const path = 'images/';
+				// const format = '.jpg';
+				// const urls = [
+				// 	path + 'posx' + format, path + 'negx' + format,
+				// 	path + 'posy' + format, path + 'negy' + format,
+				// 	path + 'posz' + format, path + 'negz' + format
+				// ];
+
+				// const textureCube = new THREE.CubeTextureLoader().load( urls );
+				// scene.background = textureCube;
+				scene.background = new THREE.Color( 0x000000 );
+				scene.environment = pmremGenerator.fromScene( environment ).texture;
+				environment.dispose();
+
+				const grid = new THREE.GridHelper( 500, 10, 0xffffff, 0xffffff );
+				grid.material.opacity = 0.5;
+				grid.material.depthWrite = false;
+				grid.material.transparent = true;
+				// scene.add( grid );
+
+				const ktx2Loader = new KTX2Loader()
+					.setTranscoderPath( 'jsm/libs/basis/' )
+					.detectSupport( renderer );
+
+				const loader = new GLTFLoader().setPath( 'models/' );
+				loader.setKTX2Loader( ktx2Loader );
+				loader.setMeshoptDecoder( MeshoptDecoder );
+				loader.load( 'gemstone.glb', function ( gltf ) {
+					gltf.scene.position.x = 78;
+					scene.add( gltf.scene );
+					render();
+				} );
+
+				loader.load( 'gemstone.glb', function ( gltf ) {
+                    gltf.scene.scale.set(1.5,1.5,1.5) 
+                    gltf.scene.position.x = 20;
+                    gltf.scene.position.y = 10;
+					scene.add( gltf.scene );
+					render();
+				} );
+				loader.load( 'gemstone.glb', function ( gltf ) {
+					gltf.scene.position.x = -40;
+					scene.add( gltf.scene );
+					render();
+				} );
+				loader.load( 'gemstone.glb', function ( gltf ) {
+					gltf.scene.position.x = -10;
+					gltf.scene.position.z = -20;
+                    gltf.scene.position.y = -10;
+                    gltf.scene.scale.set(0.5,0.5,0.5) 
+					scene.add( gltf.scene );
+					render();
+				} );
+				loader.load( 'gemstone.glb', function ( gltf ) {
+					gltf.scene.position.x = 45;
+					gltf.scene.position.z = -20;
+                    gltf.scene.position.y = -10;
+                    gltf.scene.scale.set(0.5,0.5,0.5) 
+					scene.add( gltf.scene );
+					render();
+				} );
+				loader.load( 'gemstone.glb', function ( gltf ) {
+					gltf.scene.position.x = 120;
+					gltf.scene.position.z = 40;
+                    gltf.scene.position.y = -5;
+                    gltf.scene.scale.set(0.75,0.75,0.75) 
+					scene.add( gltf.scene );
+					render();
+				} );
+				loader.load( 'gemstone.glb', function ( gltf ) {
+					gltf.scene.position.x = -80;
+					gltf.scene.position.z = 40;
+                    gltf.scene.position.y = -5;
+                    gltf.scene.scale.set(0.75,0.75,0.75) 
+					scene.add( gltf.scene );
+					render();
+				} );
+				loader.load( 'gemstone.glb', function ( gltf ) {
+					gltf.scene.position.x = -20;
+					gltf.scene.position.z = 60;
+                    gltf.scene.position.y = 45;
+                    gltf.scene.scale.set(0.75,0.75,0.75) 
+					scene.add( gltf.scene );
+					render();
+				} );
+				loader.load( 'gemstone.glb', function ( gltf ) {
+					gltf.scene.position.x = 60;
+					gltf.scene.position.z = 60;
+                    gltf.scene.position.y = 45;
+                    gltf.scene.scale.set(0.75,0.75,0.75) 
+					scene.add( gltf.scene );
+					render();
+				} );
+
+
+
+				const controls = new OrbitControls( camera, renderer.domElement );
+				controls.addEventListener( 'change', render ); // use if there is no animation loop
+				controls.minDistance = 200;
+				controls.maxDistance = 2000;
+				controls.target.set( 10, -10, 10 );
+				controls.update();
 
 				window.addEventListener( 'resize', onWindowResize );
 
@@ -90,58 +162,22 @@
 
 			function onWindowResize() {
 
-				windowHalfX = window.innerWidth / 2;
-				windowHalfY = window.innerHeight / 2;
-
 				camera.aspect = window.innerWidth / window.innerHeight;
 				camera.updateProjectionMatrix();
 
-				effect.setSize( window.innerWidth, window.innerHeight );
-
-			}
-
-			function onDocumentMouseMove( event ) {
-
-				mouseX = ( event.clientX - windowHalfX ) / 100;
-				mouseY = ( event.clientY - windowHalfY ) / 100;
-
-			}
-
-			//
-
-			function animate() {
-
-				requestAnimationFrame( animate );
+				renderer.setSize( window.innerWidth, window.innerHeight );
 
 				render();
 
 			}
 
+			//
+
 			function render() {
 
-				const timer = 0.0001 * Date.now();
-
-				camera.position.x += ( mouseX - camera.position.x ) * .05;
-				camera.position.y += ( - mouseY - camera.position.y ) * .05;
-
-				camera.lookAt( scene.position );
-
-				for ( let i = 0, il = spheres.length; i < il; i ++ ) {
-
-					const sphere = spheres[ i ];
-
-					sphere.position.x = 5 * Math.cos( timer + i );
-					sphere.position.y = 5 * Math.sin( timer + i * 1.1 );
-
-				}
-
-				effect.render( scene, camera );
+				renderer.render( scene, camera );
 
 			}
-			document.body.onscroll = () => {
-                //calculate the current scroll progress as a percentage
-                console.log("jdjd")
-            }
 
 		</script>
 
